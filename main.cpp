@@ -4,6 +4,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
+#include <vector>
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -48,10 +49,27 @@ private:
         createInfo.ppEnabledExtensionNames = glfwExtensions;
         createInfo.enabledLayerCount = 0;
 
+#ifdef __APPLE__
+        std::vector<const char*> requiredExtensions;
+
+        for(uint32_t i = 0; i < glfwExtensionCount; i++) {
+            requiredExtensions.push_back(glfwExtensions[i]);
+        }
+
+        requiredExtensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+        createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+
+        createInfo.enabledExtensionCount = (uint32_t) requiredExtensions.size();
+        createInfo.ppEnabledExtensionNames = requiredExtensions.data();
+#endif
         VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
-        if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
+        if (result == VK_ERROR_INCOMPATIBLE_DRIVER) {
+            throw std::runtime_error("encountered VK_ERROR_INCOMPATIBLE_DRIVER!");
+        }
+        if (result != VK_SUCCESS) {
             throw std::runtime_error("failed to create instance!");
         }
+        std::cout << "instance created succefully" << '\n';
     }
 
     void initVulkan() {
@@ -65,6 +83,8 @@ private:
     }
 
     void cleanup() {
+        glfwDestroyWindow(window);
+
         glfwDestroyWindow(window);
 
         glfwTerminate();
