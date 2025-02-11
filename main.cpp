@@ -1,5 +1,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <cstring>
 
 #include <iostream>
 #include <stdexcept>
@@ -19,6 +20,44 @@ const std::vector<const char*> validationLayers = {
     const bool enableValidationLayers = true;
 #endif
 
+bool checkValidationLayerSupport() {
+    uint32_t layerCount;
+    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+    std::vector<VkLayerProperties> availableLayers(layerCount);
+    vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+    for (const char* layerName : validationLayers) {
+        bool layerFound = false;
+    
+        for (const auto& layerProperties : availableLayers) {
+            if (strcmp(layerName, layerProperties.layerName) == 0) {
+                layerFound = true;
+                break;
+            }
+        }
+    
+        if (!layerFound) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+std::vector<const char*> getRequiredExtensions() {
+    uint32_t glfwExtensionCount = 0;
+    const char** glfwExtensions;
+    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+    std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+    if (enableValidationLayers) {
+        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    }
+
+    return extensions;
+}
 
 class HelloTriangleApplication {
 public:
@@ -39,6 +78,10 @@ private:
     }
 
     void createInstance() {
+        if (enableValidationLayers && !checkValidationLayerSupport()) {
+            throw std::runtime_error("validation layers requested, but not available!");
+        }
+
         VkApplicationInfo appInfo{};
         appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
         appInfo.pApplicationName = "Hello Triangle";
@@ -52,27 +95,20 @@ private:
         createInfo.pApplicationInfo = &appInfo;
 
         uint32_t glfwExtensionCount = 0;
-        const char** glfwExtensions;
-
-        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-        createInfo.enabledExtensionCount = glfwExtensionCount;
-        createInfo.ppEnabledExtensionNames = glfwExtensions;
-        createInfo.enabledLayerCount = 0;
-
+        auto extensions = getRequiredExtensions();
 #ifdef __APPLE__
-        std::vector<const char*> requiredExtensions;
-
-        for(uint32_t i = 0; i < glfwExtensionCount; i++) {
-            requiredExtensions.push_back(glfwExtensions[i]);
+        extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+        createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+#endif
+        createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+        createInfo.ppEnabledExtensionNames = extensions.data();
+        if (enableValidationLayers) {
+            createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+            createInfo.ppEnabledLayerNames = validationLayers.data();
+        } else {
+            createInfo.enabledLayerCount = 0;
         }
 
-        requiredExtensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
-        createInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-
-        createInfo.enabledExtensionCount = (uint32_t) requiredExtensions.size();
-        createInfo.ppEnabledExtensionNames = requiredExtensions.data();
-#endif
         VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
         if (result == VK_ERROR_INCOMPATIBLE_DRIVER) {
             throw std::runtime_error("encountered VK_ERROR_INCOMPATIBLE_DRIVER!");
