@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "iostream": "cpp"
+    },
+    "cmake.buildDirectory": "${workspaceFolder}/build/${buildType}",
+    "cmake.configureSettings": {
+        "CMAKE_BUILD_TYPE": "${buildType}"
+    },
+    "cmake.buildType": "Release",
+    "cmake.configureOnOpen": true,
+    "cmake.buildTypes": [
+        "Debug",
+        "Release"
+    ]
+}

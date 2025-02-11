@@ -54,10 +54,12 @@ endif()
 
 # Set output directories (inside the local build folder)
 set(LOCAL_BUILD_DIR "${CMAKE_SOURCE_DIR}/build")
+set(OUTPUT_DIR "${LOCAL_BUILD_DIR}/${CMAKE_BUILD_TYPE}")
+
 set_target_properties(${PROJECT_NAME} PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${LOCAL_BUILD_DIR}/bin"
-    ARCHIVE_OUTPUT_DIRECTORY "${LOCAL_BUILD_DIR}/lib"
-    LIBRARY_OUTPUT_DIRECTORY "${LOCAL_BUILD_DIR}/lib"
+    RUNTIME_OUTPUT_DIRECTORY "${OUTPUT_DIR}/bin"
+    ARCHIVE_OUTPUT_DIRECTORY "${OUTPUT_DIR}/lib"
+    LIBRARY_OUTPUT_DIRECTORY "${OUTPUT_DIR}/lib"
 )
 
 # On Windows, copy GLFW DLL to output directory
@@ -65,6 +67,6 @@ if (WIN32)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${GLFW_LIBRARY_DIR}/glfw3.dll
-        ${LOCAL_BUILD_DIR}/bin
+        "${OUTPUT_DIR}/bin"
     )
 endif()
