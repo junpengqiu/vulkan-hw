@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <cstdlib>
 #include <vector>
+#include <optional>
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -74,6 +75,13 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
         func(instance, debugMessenger, pAllocator);
     }
 }
+struct QueueFamilyIndices {
+    std::optional<uint32_t> graphicsFamily;
+
+    bool isComplete() {
+        return graphicsFamily.has_value();
+    }
+};
 
 class HelloTriangleApplication {
 public:
@@ -88,6 +96,7 @@ private:
     GLFWwindow* window;
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessenger;
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
     void initWindow() {
         glfwInit();
 
@@ -148,7 +157,83 @@ private:
     void initVulkan() {
         createInstance();
         setupDebugMessenger();
+        
+        pickPhysicalDevice();
     }
+
+    void pickPhysicalDevice() {
+        uint32_t deviceCount = 0;
+        vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+        if (deviceCount == 0) {
+            throw std::runtime_error("failed to find GPUs with Vulkan support!");
+        }
+        std::vector<VkPhysicalDevice> devices(deviceCount);
+        vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+
+        for (const auto& device : devices) {
+            if (isDeviceSuitable(device)) {
+                physicalDevice = device;
+                break;
+            }
+        }
+        
+        if (physicalDevice == VK_NULL_HANDLE) {
+            throw std::runtime_error("failed to find a suitable GPU!");
+        }
+    }
+
+    bool isDeviceSuitable(VkPhysicalDevice device) {
+        VkPhysicalDeviceProperties deviceProperties;
+        VkPhysicalDeviceFeatures deviceFeatures;
+        vkGetPhysicalDeviceProperties(device, &deviceProperties);
+        vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+    
+        if (deviceProperties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ||
+               !deviceFeatures.geometryShader) {
+                return false;
+        }
+
+        QueueFamilyIndices indices = findQueueFamilies(device);
+        return indices.isComplete();
+    }
+
+    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
+        QueueFamilyIndices indices;
+    
+        uint32_t queueFamilyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+    
+        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+    
+        std::cout << "Total Queue Families: " << queueFamilyCount << '\n';
+    
+        int i = 0;
+        for (const auto& queueFamily : queueFamilies) {
+            std::cout << "Queue Family " << i << " supports: ";
+    
+            if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+                std::cout << "VK_QUEUE_GRAPHICS_BIT ";
+                indices.graphicsFamily = i;
+            }
+            if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) {
+                std::cout << "VK_QUEUE_COMPUTE_BIT ";
+            }
+            if (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) {
+                std::cout << "VK_QUEUE_TRANSFER_BIT ";
+            }
+            if (queueFamily.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT) {
+                std::cout << "VK_QUEUE_SPARSE_BINDING_BIT ";
+            }
+    
+            std::cout << '\n';
+
+            i++;
+        }
+    
+        return indices;
+    }
+    
 
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
         createInfo = {};
