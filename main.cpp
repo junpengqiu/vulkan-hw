@@ -183,6 +183,7 @@ private:
     }
 
     bool isDeviceSuitable(VkPhysicalDevice device) {
+#ifndef __APPLE__
         VkPhysicalDeviceProperties deviceProperties;
         VkPhysicalDeviceFeatures deviceFeatures;
         vkGetPhysicalDeviceProperties(device, &deviceProperties);
@@ -192,7 +193,7 @@ private:
                !deviceFeatures.geometryShader) {
                 return false;
         }
-
+#endif
         QueueFamilyIndices indices = findQueueFamilies(device);
         return indices.isComplete();
     }
